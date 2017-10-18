@@ -1,3 +1,5 @@
+db.opportunities.createIndex({"initiativeId":1, "contacts.datePublished": 1});
+db.clientCriteria.ensureIndex({'value':1})
 db.getCollection('opportunities').aggregate([
     {
         "$match" : {
@@ -18,36 +20,59 @@ db.getCollection('opportunities').aggregate([
         }
     },
     {
-        "$unwind" : "$contacts"
-    },
-    {
-        "$match" : {
-            "contacts.datePublished" : {
-                "$ne" : null
-            }
+        "$project": {
+            "contacts.id": 1,
+            "contacts.questions.category_id": 1,
+            "contacts.questions.answers.primary_answer_value": 1,
+            "contacts.questions.answers.loopInstances": 1,
+            "contacts.questions.answers.criteria_value": 1,
+            "contacts.questions.criteria_value": 1,
+            "contacts.questions.id" : 1,
+            "contacts.questions.answers.primary_answer_text": 1,
+            "contacts.datePublished": 1,
+            "contacts.win_vendor.name": 1,
+            "contacts.win_vendor.value": 1,
+            "contacts.shortListedVendors": 1
         }
     },
     {
-        "$match" : {
-            "contacts.shortListedVendors" : {
-                "$elemMatch" : {
-                    "$or" : [ 
-                        {
-                            "name" : "ADP",
-                            "is_selected" : true
-                        }, 
-                        {
-                            "value" : {
-                                "$in" : [ 
-                                    50
-                                ],
-                                "$lt" : 9000
-                            },
-                            "is_selected" : true
+        "$unwind" : "$contacts"
+    },
+    {
+        "$match": {
+            $and: [
+                {
+                    "contacts.datePublished" : {
+                        "$ne" : null
+                    }
+                },
+                {
+                    "contacts.shortListedVendors" : {
+                        "$elemMatch" : {
+                            "$or" : [ 
+                                {
+                                    "name" : "ADP",
+                                    "is_selected" : true
+                                }, 
+                                {
+                                    "value" : {
+                                        "$in" : [ 
+                                            50
+                                        ],
+                                        "$lt" : 9000
+                                    },
+                                    "is_selected" : true
+                                }
+                            ]
                         }
-                    ]
+                    }
                 }
-            }
+            ]
+         }
+    },
+    {
+        "$project" : {
+            "contacts.questions": 1,
         }
     },
     {
@@ -55,47 +80,50 @@ db.getCollection('opportunities').aggregate([
     },
     {
         "$match" : {
-            "contacts.questions.category_id" : {
-                "$in" : [ 
-                    105, 
-                    147
-                ]
-            }
-        }
-    },
-    {
-        "$match" : {
-            "$nor" : [ 
+            $and:[
                 {
-                    "contacts.questions.category_id" : 105,
-                    "contacts.questions.answers" : {
-                        "$elemMatch" : {
-                            "primary_answer_value" : {
-                                "$gte" : 9000
-                            },
-                            "loopInstances" : {
+                    "contacts.questions.category_id" : {
+                        "$in" : [ 
+                            105, 
+                            147
+                        ]
+                    }
+                },
+                {
+                    "$nor" : [ 
+                        {
+                            "contacts.questions.category_id" : 105,
+                            "contacts.questions.answers" : {
                                 "$elemMatch" : {
-                                    "is_selected" : true,
-                                    "$or" : [ 
-                                        {
-                                            "loop_instance" : {
-                                                "$in" : [ 
-                                                    50
-                                                ]
-                                            }
-                                        }, 
-                                        {
-                                            "loop_text" : "ADP"
+                                    "primary_answer_value" : {
+                                        "$gte" : 9000
+                                    },
+                                    "loopInstances" : {
+                                        "$elemMatch" : {
+                                            "is_selected" : true,
+                                            "$or" : [ 
+                                                {
+                                                    "loop_instance" : {
+                                                        "$in" : [ 
+                                                            50
+                                                        ]
+                                                    }
+                                                }, 
+                                                {
+                                                    "loop_text" : "ADP"
+                                                }
+                                            ]
                                         }
-                                    ]
+                                    }
                                 }
                             }
                         }
-                    }
+                    ]
                 }
             ]
         }
     },
+    
     {
         "$unwind" : "$contacts.questions.answers"
     },
@@ -251,4 +279,4 @@ db.getCollection('opportunities').aggregate([
             }
         }
     }
-])
+]).toArray()
